@@ -1,174 +1,148 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { collection, addDoc, onSnapshot } from "firebase/firestore";
+import { db } from "./firebase"; // Make sure firebase.js is correct
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
-import { collection, addDoc, doc, setDoc, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase";
 
-export default function Ride({ user, isLeader, setIsLeader }) {
+export default function Ride() {
   const [children, setChildren] = useState([]);
-  const [attending, setAttending] = useState(false);
-  const [childName, setChildName] = useState(""); // Input for child’s name
-  const [leaderLocation, setLeaderLocation] = useState(null);
-  const [currentLeader, setCurrentLeader] = useState(null);
+  const [newChild, setNewChild] = useState("");
+  const [leader, setLeader] = useState(null);
 
-  // Load Google Maps API using .env key
+  // Load Google Maps
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
   });
 
-  // Fetch children names from Firebase
+  // Subscribe to attending collection
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "children"), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setChildren(data);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Fetch current leader from Firebase
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "leader"), (snapshot) => {
-      if (!snapshot.empty) {
-        const docData = snapshot.docs[0].data();
-        setCurrentLeader(docData.name);
-      } else {
-        setCurrentLeader(null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Track leader location
-  useEffect(() => {
-    if (isLeader && navigator.geolocation) {
-      navigator.geolocation.watchPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          setLeaderLocation({ lat: latitude, lng: longitude });
-
-          // Update leader info in Firebase
-          await setDoc(doc(db, "leader", user.email), {
-            name: user.email,
-            lat: latitude,
-            lng: longitude,
-          });
-        },
-        (error) => console.error("Error getting location:", error),
-        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+    const unsub = onSnapshot(collection(db, "attending"), (snapshot) => {
+      setChildren(
+        snapshot.docs.map((doc) => ({
+          id: doc.id,
+          name: doc.data().name,
+        }))
       );
-    }
-  }, [isLeader]);
+    });
+    return () => unsub();
+  }, []);
 
-  // Add child name to Firebase
-  const handleAttending = async () => {
-    if (!attending && childName.trim() !== "") {
-      await addDoc(collection(db, "children"), {
-        name: childName.trim(),
-      });
-      setAttending(true);
-    }
+  // Mark child as attending
+  const markAttending = async () => {
+    if (!newChild) return;
+    await addDoc(collection(db, "attending"), { name: newChild });
+    setNewChild("");
+  };
+
+  // Select leader of the day
+  const selectLeader = () => {
+    if (children.length > 0) setLeader(children[0].name); // First child as leader
   };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ color: "#228B22", textAlign: "center", marginBottom: "20px" }}>
-        🚴 Rapaura School Bike Bus Tracker
-      </h1>
-
-      {/* Show leader of the day */}
-      {currentLeader && (
-        <p style={{ textAlign: "center", color: "#d9534f", fontWeight: "bold", fontSize: "1.1rem" }}>
-          Leader of the Day: {currentLeader}
+    <div
+      style={{
+        fontFamily: "Arial, sans-serif",
+        padding: "20px",
+        maxWidth: "800px",
+        margin: "0 auto",
+      }}
+    >
+      {/* Info Box */}
+      <div
+        style={{
+          backgroundColor: "#f5f5f5",
+          border: "3px solid green",
+          borderRadius: "12px",
+          padding: "15px",
+          marginBottom: "20px",
+          boxShadow:
+            "4px 4px 10px rgba(0,0,0,0.2), -4px -4px 10px rgba(255,255,255,0.5)",
+          color: "#333",
+        }}
+      >
+        <h2 style={{ color: "green", marginBottom: "10px" }}>
+          Rapaura School Bike Bus Tracker
+        </h2>
+        <p>
+          Welcome! This tracker shows who is attending the Bike Bus each day.
+          Children can mark themselves as attending, and the leader of the day
+          will be highlighted on the map.
         </p>
-      )}
+      </div>
 
-      {/* Leader button */}
-      {!isLeader && (
-        <div style={{ textAlign: "center", marginBottom: "15px" }}>
-          <button
-            onClick={() => setIsLeader(true)}
-            style={{
-              padding: "12px 20px",
-              backgroundColor: "#228B22",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              fontSize: "1rem",
-              cursor: "pointer",
-            }}
-          >
-            I am a leader
-          </button>
-        </div>
-      )}
-      {isLeader && (
-        <p style={{ textAlign: "center", color: "#555", marginBottom: "15px" }}>
-          You are now the leader!
-        </p>
-      )}
-
-      {/* Input for child name and attending button */}
-      {!attending && (
-        <div style={{ textAlign: "center", marginBottom: "15px" }}>
-          <input
-            type="text"
-            placeholder="Enter child’s name"
-            value={childName}
-            onChange={(e) => setChildName(e.target.value)}
-            style={{
-              padding: "10px",
-              width: "200px",
-              borderRadius: "6px",
-              border: "1px solid #ccc",
-              marginRight: "10px",
-              fontSize: "1rem",
-            }}
-          />
-          <button
-            onClick={handleAttending}
-            style={{
-              padding: "10px 18px",
-              backgroundColor: "#228B22",
-              color: "#fff",
-              border: "none",
-              borderRadius: "6px",
-              fontSize: "1rem",
-              cursor: "pointer",
-            }}
-          >
-            Mark as Attending
-          </button>
-        </div>
-      )}
-      {attending && (
-        <p style={{ textAlign: "center", color: "#555", marginBottom: "15px" }}>
-          {childName} is attending the bike bus today!
-        </p>
-      )}
-
-      {/* Children list */}
+      {/* Input & Buttons */}
       <div style={{ marginBottom: "20px" }}>
-        <h2 style={{ color: "#228B22" }}>Attending:</h2>
-        <ul>
-          {children.map((child) => (
-            <li key={child.id}>{child.name}</li>
-          ))}
-        </ul>
+        <input
+          type="text"
+          placeholder="Child name"
+          value={newChild}
+          onChange={(e) => setNewChild(e.target.value)}
+          style={{
+            padding: "8px",
+            marginRight: "10px",
+            borderRadius: "5px",
+            border: "1px solid #ccc",
+          }}
+        />
+        <button
+          onClick={markAttending}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "5px",
+            backgroundColor: "green",
+            color: "#fff",
+            border: "none",
+            marginRight: "10px",
+          }}
+        >
+          Attending
+        </button>
+        <button
+          onClick={selectLeader}
+          style={{
+            padding: "8px 12px",
+            borderRadius: "5px",
+            backgroundColor: "red",
+            color: "#fff",
+            border: "none",
+          }}
+        >
+          Leader of the Day
+        </button>
       </div>
 
-      {/* Google Map showing only leader */}
-      <div style={{ height: "400px", borderRadius: "8px", overflow: "hidden" }}>
-        {isLoaded && leaderLocation ? (
-          <GoogleMap
-            mapContainerStyle={{ width: "100%", height: "100%" }}
-            center={leaderLocation}
-            zoom={15}
-          >
-            {isLeader && <Marker position={leaderLocation} label="Leader" />}
-          </GoogleMap>
-        ) : (
-          <p style={{ textAlign: "center", paddingTop: "180px" }}>Loading map...</p>
-        )}
-      </div>
+      {/* Attending List */}
+      <h3>Attending Children:</h3>
+      <ul>
+        {children.map((child) => (
+          <li key={child.id}>{child.name}</li>
+        ))}
+      </ul>
+
+      {/* Map */}
+      {isLoaded ? (
+        <GoogleMap
+          mapContainerStyle={{ width: "100%", height: "400px", marginTop: "20px" }}
+          center={{ lat: -41.5, lng: 173.9 }} // Adjust for your school location
+          zoom={14}
+        >
+          {leader && (
+            <Marker
+              position={{ lat: -41.5, lng: 173.9 }}
+              label={{
+                text: `Leader: ${leader}`,
+                color: "white",
+                fontWeight: "bold",
+              }}
+              icon={{
+                url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png",
+              }}
+            />
+          )}
+        </GoogleMap>
+      ) : (
+        <p>Loading map...</p>
+      )}
     </div>
   );
 }
