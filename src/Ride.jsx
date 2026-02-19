@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { collection, addDoc, onSnapshot, writeBatch, getDocs } from "firebase/firestore";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
-import { db } from "./firebase"; // your firebase config
+import { db } from "./firebase"; 
 
 import "react-toastify/dist/ReactToastify.css";
 

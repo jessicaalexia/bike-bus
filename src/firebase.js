@@ -1,20 +1,23 @@
-// Import the functions you need from the SDKs
+// src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-// Replace these values with your Firebase web app config
+// Your Firebase config
 const firebaseConfig = {
-apiKey: "AIzaSyC2axeBaJ0oBFV7j9g2KZiov56u2rfxKvY",
-  authDomain: "rapaura-school-bike-bus.firebaseapp.com",
-  projectId: "rapaura-school-bike-bus",
-  storageBucket: "rapaura-school-bike-bus.firebasestorage.app",
-  messagingSenderId: "183156139194",
-  appId: "1:183156139194:web:a1e118d4f1d56c2c04ce83",
-  measurementId: "G-K7SS5PXZTP"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
+// Firestore database
+export const db = getFirestore(app);
+
+// Auth
 export const auth = getAuth(app);
-export const db = getFirestore(app);  
