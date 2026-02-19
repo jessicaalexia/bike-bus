@@ -128,7 +128,7 @@ export default function Ride() {
         >
           {leader && (
             <Marker
-              position={{ lat: -41.5, lng: 173.9 }}
+              position={{ lat: -41.5, lng: 173.9 }} // adjust for leader location if needed
               label={{
                 text: `Leader: ${leader}`,
                 color: "white",
