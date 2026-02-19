@@ -10,7 +10,13 @@ const Ride = () => {
   const [newChild, setNewChild] = useState("");
   const [leader, setLeader] = useState("");
   const [userLocation, setUserLocation] = useState(null);
+  const [leaderName, setLeaderName] = useState("");
 
+  const handleAddLeader = async () => {
+  if (!leaderName) return;
+  await addDoc(collection(db, "leader"), { name: leaderName });
+  setLeaderName("");
+};
   // Load Google Maps
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -88,7 +94,16 @@ const Ride = () => {
           ))}
         </ul>
       </div>
-
+<div>
+  <h3>Leader</h3>
+  <input
+    type="text"
+    placeholder="Enter leader name"
+    value={leaderName}
+    onChange={(e) => setLeaderName(e.target.value)}
+  />
+  <button onClick={handleAddLeader}>Enter</button>
+</div>
       {isLoaded && userLocation && (
         <GoogleMap
           mapContainerStyle={{ width: "100%", height: "400px" }}
