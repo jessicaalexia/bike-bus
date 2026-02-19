@@ -1,45 +1,57 @@
 import React, { useState, useEffect } from "react";
-import { collection, addDoc, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase";
+import { collection, addDoc, onSnapshot, writeBatch, getDocs } from "firebase/firestore";
 import { GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { db } from "./firebase"; // your firebase config
 
-export default function Ride() {
+import "react-toastify/dist/ReactToastify.css";
+
+const Ride = () => {
   const [children, setChildren] = useState([]);
   const [newChild, setNewChild] = useState("");
-  const [leader, setLeader] = useState(null);
+  const [leader, setLeader] = useState("");
+  const [userLocation, setUserLocation] = useState(null);
 
+  // Load Google Maps
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
   });
 
+  // Attendance listener
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "attending"), (snapshot) => {
-      setChildren(
-        snapshot.docs.map((doc) => ({
-          id: doc.id,
-          name: doc.data().name,
-        }))
-      );
+      setChildren(snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name })));
     });
     return () => unsub();
   }, []);
 
-  const markAttending = async () => {
+  // User location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      });
+    }
+  }, []);
+
+  // Add child
+  const handleAddChild = async () => {
     if (!newChild) return;
     await addDoc(collection(db, "attending"), { name: newChild });
     setNewChild("");
   };
 
-  const selectLeader = () => {
-    if (children.length > 0) setLeader(children[0].name);
+  // Clear attendance
+  const handleClearAttendance = async () => {
+    const batch = writeBatch(db);
+    const snapshot = await getDocs(collection(db, "attending"));
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    setChildren([]);
   };
 
   return (
-    <div style={{ fontFamily: "Arial, sans-serif", padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
-      <div style={{ backgroundColor: "#f5f5f5", border: "3px solid green", borderRadius: "12px", padding: "15px", marginBottom: "20px", boxShadow: "4px 4px 10px rgba(0,0,0,0.2), -4px -4px 10px rgba(255,255,255,0.5)", color: "#333" }}>
-        <h2 style={{ color: "green", marginBottom: "10px" }}>Rapaura School Bike Bus Tracker</h2>
-        <p>Welcome! This tracker shows who is attending the Bike Bus each day. Children can mark themselves as attending, and the leader of the day will be highlighted on the map.</p>
-      </div>
+    <div style={{ padding: "20px", color: "#fff", fontFamily: "Arial, sans-serif" }}>
+      <h1>Rapaura School Bike Bus Tracker</h1>
 
       <div style={{ marginBottom: "20px" }}>
         <input
@@ -47,46 +59,47 @@ export default function Ride() {
           placeholder="Child name"
           value={newChild}
           onChange={(e) => setNewChild(e.target.value)}
-          style={{ padding: "8px", marginRight: "10px", borderRadius: "5px", border: "1px solid #ccc" }}
+          style={{ padding: "5px", marginRight: "10px" }}
         />
-        <button
-          onClick={markAttending}
-          style={{ padding: "8px 12px", borderRadius: "5px", backgroundColor: "green", color: "#fff", border: "none", marginRight: "10px" }}
-        >
+        <button onClick={handleAddChild} style={{ padding: "5px 10px", backgroundColor: "green", color: "white" }}>
           Attending
         </button>
-        <button
-          onClick={selectLeader}
-          style={{ padding: "8px 12px", borderRadius: "5px", backgroundColor: "red", color: "#fff", border: "none" }}
-        >
-          Leader of the Day
+        <button onClick={handleClearAttendance} style={{ padding: "5px 10px", marginLeft: "10px", backgroundColor: "red", color: "white" }}>
+          Clear List
         </button>
       </div>
 
-      <h3>Attending Children:</h3>
-      <ul>
-        {children.map((child) => (
-          <li key={child.id}>{child.name}</li>
-        ))}
-      </ul>
+      <div style={{ marginBottom: "20px" }}>
+        <input
+          type="text"
+          placeholder="Leader name"
+          value={leader}
+          onChange={(e) => setLeader(e.target.value)}
+          style={{ padding: "5px" }}
+        />
+      </div>
 
-      {isLoaded ? (
+      <div style={{ marginBottom: "20px" }}>
+        <h2>Leader of the Day: {leader || "TBD"}</h2>
+        <h3>Attending Children:</h3>
+        <ul>
+          {children.map(child => (
+            <li key={child.id}>{child.name}</li>
+          ))}
+        </ul>
+      </div>
+
+      {isLoaded && userLocation && (
         <GoogleMap
-          mapContainerStyle={{ width: "100%", height: "400px", marginTop: "20px" }}
-          center={{ lat: -41.5, lng: 173.9 }}
-          zoom={14}
+          mapContainerStyle={{ width: "100%", height: "400px" }}
+          center={userLocation}
+          zoom={15}
         >
-          {leader && (
-            <Marker
-              position={{ lat: -41.5, lng: 173.9 }}
-              label={{ text: `Leader: ${leader}`, color: "white", fontWeight: "bold" }}
-              icon={{ url: "http://maps.google.com/mapfiles/ms/icons/red-dot.png" }}
-            />
-          )}
+          <Marker position={userLocation} />
         </GoogleMap>
-      ) : (
-        <p>Loading map...</p>
       )}
     </div>
   );
-}
+};
+
+export default Ride;
