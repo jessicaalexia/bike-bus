@@ -1,6 +1,12 @@
-import React from "react";
-import Ride from "./Ride";
+import React, { useState } from "react";
+import Login from "./Login.jsx";
+import Ride from "./Ride.jsx";
+import InfoPage from "./InfoPage.jsx";
 
-const App = () => <Ride />;
+export default function App() {
+  const [user, setUser] = useState(null);
 
-export default App;
+  if (!user) return <Login setUser={setUser} />;
+
+  return <Ride user={user} />;
+}
